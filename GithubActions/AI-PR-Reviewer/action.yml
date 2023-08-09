@@ -1,0 +1,201 @@
+name: 'AI-based PR Reviewer & Summarizer with Chat Capabilities'
+description: 'AI-based PR Reviewer & Summarizer with Chat Capabilities'
+branding:
+  icon: 'git-merge'
+  color: 'orange'
+author: 'CodeRabbit LLC'
+inputs:
+  debug:
+    required: false
+    description: 'Enable debug mode'
+    default: 'false'
+  max_files:
+    required: false
+    description:
+      'Max files to summarize and review. Less than or equal to 0 means no
+      limit.'
+    default: '150'
+  review_simple_changes:
+    required: false
+    description: 'Review even when the changes are simple'
+    default: 'false'
+  review_comment_lgtm:
+    required: false
+    description: 'Leave comments even if the patch is LGTM'
+    default: 'false'
+  path_filters:
+    required: false
+    description: |
+      The path filters, e.g., "src/**.py", "!dist/**", each line will be considered as one pattern.
+      See also
+
+      - https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpushpull_requestpull_request_targetpathspaths-ignore
+      - https://github.com/isaacs/minimatch
+    default: |
+      !dist/**
+      !**/*.app
+      !**/*.bin
+      !**/*.bz2
+      !**/*.class
+      !**/*.db
+      !**/*.csv
+      !**/*.tsv
+      !**/*.dat
+      !**/*.dll
+      !**/*.dylib
+      !**/*.egg
+      !**/*.glif
+      !**/*.gz
+      !**/*.xz
+      !**/*.zip
+      !**/*.zst
+      !**/*.ico
+      !**/*.jar
+      !**/*.tar
+      !**/*.war
+      !**/*.lo
+      !**/*.log
+      !**/*.mp3
+      !**/*.mp4
+      !**/*.nar
+      !**/*.o
+      !**/*.ogg
+      !**/*.otf
+      !**/*.p
+      !**/*.pdf
+      !**/*.pkl
+      !**/*.pickle
+      !**/*.pyc
+      !**/*.pyd
+      !**/*.pyo
+      !**/*.rkt
+      !**/*.so
+      !**/*.ss
+      !**/*.eot
+      !**/*.exe
+      !**/*.pb.go
+      !**/*.lock
+      !**/*.ttf
+      !**/*.yaml
+      !**/*.yml
+      !**/*.cfg
+      !**/*.toml
+      !**/*.ini
+      !**/*.mod
+      !**/*.sum
+      !**/*.work
+      !**/*.json
+      !**/*.mmd
+      !**/*.svg
+      !**/*.jpeg
+      !**/*.jpg
+      !**/*.png
+      !**/*.gif
+      !**/*.webm
+      !**/*.woff
+      !**/*.woff2
+      !**/*.dot
+      !**/*.md5sum
+      !**/*.wasm
+      !**/*.snap
+      !**/gen/**
+      !**/_gen/**
+      !**/generated/**
+      !**/vendor/**
+  disable_review:
+    required: false
+    description: 'Only provide the summary and skip the code review.'
+    default: 'false'
+  disable_release_notes:
+    required: false
+    description: 'Disable release notes'
+    default: 'false'
+  openai_base_url:
+    required: false
+    description: 'The url of the openai api interface.'
+    default: 'https://api.openai.com/v1'
+  openai_light_model:
+    required: false
+    description:
+      'Model to use for simple tasks like summarizing diff on a file.'
+    default: 'gpt-3.5-turbo'
+  openai_heavy_model:
+    required: false
+    description: 'Model to use for complex tasks such as code reviews.'
+    default: 'gpt-4'
+  openai_model_temperature:
+    required: false
+    description: 'Temperature for GPT model'
+    default: '0.05'
+  openai_retries:
+    required: false
+    description:
+      'How many times to retry OpenAI API in case of timeouts or errors?'
+    default: '5'
+  openai_timeout_ms:
+    required: false
+    description: 'Timeout for OpenAI API call in millis'
+    default: '360000'
+  openai_concurrency_limit:
+    required: false
+    description: 'How many concurrent API calls to make to OpenAI servers?'
+    default: '6'
+  github_concurrency_limit:
+    required: false
+    description: 'How many concurrent API calls to make to GitHub?'
+    default: '6'
+  system_message:
+    required: false
+    description: 'System message to be sent to OpenAI'
+    default: |
+      あなたは `@openai` (a.k.a. `github-actions[bot]`) です。
+      あなたの目的は、経験豊富なソフトウェアエンジニアとして、PullRequestの徹底的なレビューを日本語で提供することです。
+      以下のような重要な部分を改善するためのコードスニペットを提案すること:
+        - ロジック
+        - セキュリティ
+        - パフォーマンス
+        - レースコンディション
+        - 一貫性
+        - エラー処理
+        - 保守性
+        - モジュール性
+        - 複雑性
+        - 最適化
+
+      明示的に要求された場合を除き、些細なコードスタイルの問題、コメントの不足、ドキュメントの欠落についてコメントしたり、称賛したりすることは控えること。
+      コード全体の品質を向上させるために、重大な懸念事項を特定して解決することに集中し、些細な問題は無視すること。
+
+      注意: あなたの知識は古いかもしれないので、APIやメソッドが使用されていないように見えても、コミットされたユーザーコードを信頼してください。
+  summarize:
+    required: false
+    description: 'The prompt for final summarization response'
+    default: |
+      最終的な回答を `markdown` フォーマットで以下の内容で書いてください:
+
+        - 高レベルの要約（特定のファイルではなく、全体的な変更点についてのコメント日本語200文字以内)
+        - 同じような変更点のあるファイルをスペースを節約するために、同じような変更を持つファイルを1つの行にまとめてよい
+
+      この要約は、GitHub の PullRequest にコメントとして追加されるので、追加コメントは避けること
+  summarize_release_notes:
+    required: false
+    description:
+      'The prompt for generating release notes in the same chat as summarize
+      stage'
+    default: |
+      この PullRequest のために `markdown` フォーマットで簡潔なリリースノートを作成すること。
+      コードの目的とユーザーストーリーに焦点を当てること。
+      変更は次のように分類し箇条書きにすること:
+        "New Feature", "Bug fix", "Documentation", "Refactor", "Style",
+        "Test", "Chore", "Revert"
+      例えば:
+      ```
+      - New Feature: コメント追加のUIにキャンセルボタンが追加された
+      ```
+      回答は箇条書き1項目につき、日本語50-100文字にまとめること。
+      この回答はリリースノートでそのまま使用されます。
+
+      リリースノートの下に、この PullRequest の変更点についての短いお祝いのポエムを追加してください。
+      このポエムを引用（ `>` ）として追加してください。ポエムには絵文字を使用できる
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
